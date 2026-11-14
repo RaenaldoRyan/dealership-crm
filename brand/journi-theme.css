@@ -1,0 +1,109 @@
+/* Journi-inspired theme for the Laravel 12 Vue starter kit
+   Paste the :root and .dark blocks over the existing ones in resources/css/app.css.
+   In @theme inline, replace --font-sans and add --font-heading:
+     --font-sans: 'Funnel Sans', ui-sans-serif, system-ui, sans-serif;
+     --font-heading: 'Funnel Display', 'Funnel Sans', ui-sans-serif, system-ui, sans-serif;
+   Add to resources/views/app.blade.php <head>:
+     <link rel="preconnect" href="https://fonts.googleapis.com">
+     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+     <link href="https://fonts.googleapis.com/css2?family=Funnel+Display:wght@300..800&family=Funnel+Sans:ital,wght@0,300..800;1,300..800&display=swap" rel="stylesheet">
+*/
+
+:root {
+    --background: oklch(0.975 0.005 258.325); /* #f5f7fa */
+    --foreground: oklch(0.177 0.034 269.559); /* #0b1020 */
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.177 0.034 269.559);
+    --popover: oklch(1 0 0);
+    --popover-foreground: oklch(0.177 0.034 269.559);
+    --primary: oklch(0.773 0.153 163.223); /* #34d399 */
+    --primary-foreground: oklch(0.178 0.024 232.710); /* #06131a */
+    --secondary: oklch(0.945 0.010 261.789);
+    --secondary-foreground: oklch(0.177 0.034 269.559);
+    --muted: oklch(0.945 0.010 261.789);
+    --muted-foreground: oklch(0.554 0.033 264.253);
+    --accent: oklch(0.945 0.010 261.789);
+    --accent-foreground: oklch(0.177 0.034 269.559);
+    --destructive: oklch(0.577 0.245 27.325);
+    --destructive-foreground: oklch(0.577 0.245 27.325);
+    --border: oklch(0.897 0.015 264.493);
+    --input: oklch(0.897 0.015 264.493);
+    --ring: oklch(0.773 0.153 163.223);
+    --chart-1: oklch(0.773 0.153 163.223);
+    --chart-2: oklch(0.655 0.184 262.047);
+    --chart-3: oklch(0.769 0.165 70.080);
+    --chart-4: oklch(0.661 0.159 295.236);
+    --chart-5: oklch(0.797 0.134 211.530);
+    --radius: 0.875rem;
+    --sidebar: oklch(1 0 0);
+    --sidebar-foreground: oklch(0.177 0.034 269.559);
+    --sidebar-primary: oklch(0.773 0.153 163.223);
+    --sidebar-primary-foreground: oklch(0.178 0.024 232.710);
+    --sidebar-accent: oklch(0.945 0.010 261.789);
+    --sidebar-accent-foreground: oklch(0.177 0.034 269.559);
+    --sidebar-border: oklch(0.897 0.015 264.493);
+    --sidebar-ring: oklch(0.773 0.153 163.223);
+
+    /* Deal stage badges */
+    --stage-enquiry: #4f8bff;
+    --stage-enquiry-foreground: #ffffff;
+    --stage-test-drive: #22d3ee;
+    --stage-test-drive-foreground: #06131a;
+    --stage-negotiation: #f59e0b;
+    --stage-negotiation-foreground: #06131a;
+    --stage-sold: #34d399;
+    --stage-sold-foreground: #06131a;
+    --stage-lost: #64748b;
+    --stage-lost-foreground: #ffffff;
+}
+
+.dark {
+    --background: oklch(0.177 0.034 269.559); /* #0b1020 */
+    --foreground: oklch(0.975 0.005 258.325); /* #f5f7fa */
+    --card: oklch(0.205 0.040 269.5); /* #111831, barely raised */
+    --card-foreground: oklch(0.975 0.005 258.325);
+    --popover: oklch(0.205 0.040 269.5);
+    --popover-foreground: oklch(0.975 0.005 258.325);
+    --primary: oklch(0.773 0.153 163.223); /* emerald, only accent */
+    --primary-foreground: oklch(0.178 0.024 232.710);
+    --secondary: oklch(1 0 0 / 5%);
+    --secondary-foreground: oklch(0.975 0.005 258.325);
+    --muted: oklch(1 0 0 / 5%);
+    --muted-foreground: oklch(0.747 0.024 266.848); /* #a6adbd */
+    --accent: oklch(1 0 0 / 6%);
+    --accent-foreground: oklch(0.975 0.005 258.325);
+    --destructive: oklch(0.396 0.141 25.723);
+    --destructive-foreground: oklch(0.637 0.237 25.331);
+    --border: oklch(1 0 0 / 7%); /* hairlines */
+    --input: oklch(1 0 0 / 9%);
+    --ring: oklch(0.773 0.153 163.223 / 60%);
+    --chart-1: oklch(0.773 0.153 163.223);
+    --chart-2: oklch(0.747 0.024 266.848);
+    --chart-3: oklch(0.6 0.02 266);
+    --chart-4: oklch(0.45 0.02 266);
+    --chart-5: oklch(0.35 0.02 266);
+    --sidebar: oklch(0.177 0.034 269.559);
+    --sidebar-foreground: oklch(0.747 0.024 266.848);
+    --sidebar-primary: oklch(0.975 0.005 258.325);
+    --sidebar-primary-foreground: oklch(0.177 0.034 269.559);
+    --sidebar-accent: oklch(1 0 0 / 5%);
+    --sidebar-accent-foreground: oklch(0.975 0.005 258.325);
+    --sidebar-border: oklch(1 0 0 / 7%);
+    --sidebar-ring: oklch(0.773 0.153 163.223 / 60%);
+}
+
+/* Premium stage dots: small dot + plain text, no filled badges */
+:root {
+    --stage-enquiry: #6b8fd6;
+    --stage-test-drive: #5fb8c6;
+    --stage-negotiation: #c9a35a;
+    --stage-sold: #34d399;
+    --stage-lost: #6b7280;
+}
+/* Usage: <span class="inline-block size-1.5 rounded-full" style="background: var(--stage-sold)"></span> Sold */
+
+/* Quiet details */
+.dark .shadow, .dark .shadow-sm, .dark .shadow-xs { box-shadow: none; }
+body { font-feature-settings: "tnum" 1; } /* aligned numbers for prices */
+
+h1, h2, h3 { font-family: var(--font-heading); font-weight: 500; letter-spacing: -0.035em; }
