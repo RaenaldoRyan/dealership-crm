@@ -18,7 +18,7 @@ class ContactIndex
     /**
      * Contacts the viewer may see, eight per page.
      *
-     * @return LengthAwarePaginator<int, array<string, mixed>>
+     * @return LengthAwarePaginator<int, array{id: int, name: string, email: string, phone: string|null, vehicles: int, openDeals: int, owner: string, lastActivity: string|null}>
      */
     public function paginate(User $viewer, ?string $search, string $filter): LengthAwarePaginator
     {

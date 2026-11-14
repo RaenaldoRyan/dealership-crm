@@ -19,7 +19,7 @@ class ContactActivity
      */
     public function present(User $viewer, Contact $contact): array
     {
-        return Activity::query()
+        return array_values(Activity::query()
             ->where(function (Builder $query) use ($viewer, $contact): void {
                 $query->where(function (Builder $query) use ($contact): void {
                     $query->whereMorphedTo('subject', $contact);
@@ -39,6 +39,6 @@ class ContactActivity
                 'description' => $activity->description,
                 'time' => RelativeTime::format($activity->created_at ?? now()),
             ])
-            ->all();
+            ->all());
     }
 }

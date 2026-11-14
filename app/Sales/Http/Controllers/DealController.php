@@ -85,7 +85,7 @@ class DealController extends Controller
     {
         Gate::authorize('create', Deal::class);
 
-        $create->handle($this->actor($request), $request->validated());
+        $create->handle($this->actor($request), $request->deal());
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Deal created.')]);
 

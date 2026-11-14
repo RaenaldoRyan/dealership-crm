@@ -62,7 +62,7 @@ class ContactController extends Controller
     {
         Gate::authorize('create', Contact::class);
 
-        $create->handle($this->actor($request), $request->validated());
+        $create->handle($this->actor($request), $request->contact());
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Contact created.')]);
 
@@ -108,7 +108,7 @@ class ContactController extends Controller
     {
         Gate::authorize('update', $contact);
 
-        $update->handle($this->actor($request), $contact, $request->validated());
+        $update->handle($this->actor($request), $contact, $request->contact());
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Contact updated.')]);
 

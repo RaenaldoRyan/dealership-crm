@@ -46,21 +46,10 @@ class VehiclePolicy
      */
     public function update(User $user, Vehicle $vehicle): bool
     {
-        if ($user->role === Role::Manager) {
-            return true;
-        }
-
-        if ($user->role !== Role::Rep) {
-            return false;
-        }
-
-        if ($vehicle->contact_id === null) {
-            return true;
-        }
-
-        $contact = Contact::query()->find($vehicle->contact_id);
-
-        return $contact instanceof Contact && $user->can('update', $contact);
+        return match ($user->role) {
+            Role::Manager => true,
+            Role::Rep => $this->repCanUpdate($user, $vehicle),
+        };
     }
 
     /**
@@ -69,6 +58,20 @@ class VehiclePolicy
     public function delete(User $user, Vehicle $vehicle): bool
     {
         return false;
+    }
+
+    /**
+     * Stock is shared. A customer vehicle stays with the rep who owns that contact.
+     */
+    private function repCanUpdate(User $user, Vehicle $vehicle): bool
+    {
+        if ($vehicle->contact_id === null) {
+            return true;
+        }
+
+        $contact = Contact::query()->find($vehicle->contact_id);
+
+        return $contact instanceof Contact && $user->can('update', $contact);
     }
 
     /**

@@ -14,7 +14,7 @@ class PipelineBoard
      */
     public function present(User $user): array
     {
-        return Deal::query()
+        return array_values(Deal::query()
             ->visibleTo($user)
             ->with([
                 'contact:id,name',
@@ -38,6 +38,6 @@ class PipelineBoard
                     'name' => $deal->owner->name,
                 ],
             ])
-            ->all();
+            ->all());
     }
 }

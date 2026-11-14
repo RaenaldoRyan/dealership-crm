@@ -10,7 +10,7 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 class VehicleIndex
 {
     /**
-     * @return LengthAwarePaginator<int, array<string, mixed>>
+     * @return LengthAwarePaginator<int, array{id: int, registration: string, make: string, model: string, year: int, colour: string|null, fuelType: string|null, fuelLabel: string|null, transmission: string|null, transmissionLabel: string|null, mileage: int|null, vin: string|null, price: string, status: string, statusLabel: string, customer: string|null, contactId: int|null, deal: array{id: int, label: string}|null}>
      */
     public function paginate(?string $search, ?VehicleStatus $status): LengthAwarePaginator
     {

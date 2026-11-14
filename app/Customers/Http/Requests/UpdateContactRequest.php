@@ -32,4 +32,18 @@ class UpdateContactRequest extends FormRequest
             'phone' => ['nullable', 'string', 'max:50'],
         ];
     }
+
+    /**
+     * The validated contact, with each field in the type the action stores.
+     *
+     * @return array{name: string, email: string, phone: string|null}
+     */
+    public function contact(): array
+    {
+        return [
+            'name' => $this->string('name')->toString(),
+            'email' => $this->string('email')->toString(),
+            'phone' => $this->filled('phone') ? $this->string('phone')->toString() : null,
+        ];
+    }
 }

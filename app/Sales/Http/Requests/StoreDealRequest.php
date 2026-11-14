@@ -59,6 +59,21 @@ class StoreDealRequest extends FormRequest
     }
 
     /**
+     * The validated deal, with each field in the type the action stores.
+     *
+     * @return array{contact_id: int, vehicle_id: int|null, value: string, stage: string}
+     */
+    public function deal(): array
+    {
+        return [
+            'contact_id' => $this->integer('contact_id'),
+            'vehicle_id' => $this->filled('vehicle_id') ? $this->integer('vehicle_id') : null,
+            'value' => $this->string('value')->toString(),
+            'stage' => $this->string('stage')->toString(),
+        ];
+    }
+
+    /**
      * Get custom attributes for validator errors.
      *
      * @return array<string, string>

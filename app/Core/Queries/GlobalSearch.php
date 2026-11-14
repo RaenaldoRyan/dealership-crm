@@ -46,7 +46,7 @@ class GlobalSearch
      */
     private function contacts(User $viewer, string $like): array
     {
-        return Contact::query()
+        return array_values(Contact::query()
             ->visibleTo($viewer)
             ->where(function ($query) use ($like): void {
                 $query->where('name', 'like', $like)
@@ -62,7 +62,7 @@ class GlobalSearch
                 'detail' => $contact->email,
                 'href' => route('contacts.show', $contact),
             ])
-            ->all();
+            ->all());
     }
 
     /**
@@ -70,7 +70,7 @@ class GlobalSearch
      */
     private function deals(User $viewer, string $like, string $plate): array
     {
-        return Deal::query()
+        return array_values(Deal::query()
             ->visibleTo($viewer)
             ->with('contact:id,name')
             ->where(function ($query) use ($like, $plate): void {
@@ -86,7 +86,7 @@ class GlobalSearch
                 'detail' => $deal->stage->label(),
                 'href' => route('deals.show', $deal),
             ])
-            ->all();
+            ->all());
     }
 
     /**
@@ -94,7 +94,7 @@ class GlobalSearch
      */
     private function vehicles(string $plate): array
     {
-        return Vehicle::query()
+        return array_values(Vehicle::query()
             ->where('registration', 'like', $plate)
             ->orderBy('registration')
             ->limit(5)
@@ -105,6 +105,6 @@ class GlobalSearch
                 'detail' => $vehicle->make.' '.$vehicle->model,
                 'href' => route('vehicles.show', $vehicle),
             ])
-            ->all();
+            ->all());
     }
 }

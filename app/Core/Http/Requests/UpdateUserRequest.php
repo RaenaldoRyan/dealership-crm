@@ -43,4 +43,21 @@ class UpdateUserRequest extends FormRequest
             'is_active' => ['sometimes', 'boolean'],
         ];
     }
+
+    /**
+     * The validated staff account, with each field in the type the action stores.
+     *
+     * A missing active flag stays active, matching the action.
+     *
+     * @return array{name: string, email: string, role: string, is_active: bool}
+     */
+    public function staff(): array
+    {
+        return [
+            'name' => $this->string('name')->toString(),
+            'email' => $this->string('email')->toString(),
+            'role' => $this->string('role')->toString(),
+            'is_active' => $this->exists('is_active') ? $this->boolean('is_active') : true,
+        ];
+    }
 }

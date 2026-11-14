@@ -3,7 +3,6 @@
 namespace App\Core\Auth;
 
 use App\Core\Models\User;
-use Illuminate\Contracts\Auth\UserProvider;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -32,10 +31,10 @@ class AuthenticateActiveUser
             return null;
         }
 
-        $provider = Auth::guard((string) config('fortify.guard'))->getProvider();
-
-        if (config('hashing.rehash_on_login', true) && $provider instanceof UserProvider && method_exists($provider, 'rehashPasswordIfRequired')) {
-            $provider->rehashPasswordIfRequired($user, ['password' => $password]);
+        if (config('hashing.rehash_on_login', true)) {
+            Auth::guard((string) config('fortify.guard'))
+                ->getProvider()
+                ->rehashPasswordIfRequired($user, ['password' => $password]);
         }
 
         if (! $user->is_active) {

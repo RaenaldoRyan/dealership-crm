@@ -21,6 +21,7 @@ use App\Sales\Actions\MarkDealAsSold;
 use App\Sales\Enums\DealStage;
 use App\Sales\Models\Deal;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Carbon;
 
 class DatabaseSeeder extends Seeder
 {
@@ -229,14 +230,14 @@ class DatabaseSeeder extends Seeder
     private function placeHistory(): void
     {
         Activity::query()->orderBy('id')->each(function (Activity $activity, int $index): void {
-            $at = now()->subDays(($index * 2) % 21)->subHours($index % 12);
+            $at = Carbon::instance(now()->subDays(($index * 2) % 21)->subHours($index % 12));
             $activity->created_at = $at;
             $activity->updated_at = $at;
             $activity->save();
         });
 
         Note::query()->orderBy('id')->each(function (Note $note, int $index): void {
-            $at = now()->subDays(1 + (($index * 3) % 18))->subHours($index % 8);
+            $at = Carbon::instance(now()->subDays(1 + (($index * 3) % 18))->subHours($index % 8));
             $note->created_at = $at;
             $note->updated_at = $at;
             $note->save();
@@ -251,10 +252,10 @@ class DatabaseSeeder extends Seeder
             default => 100 + ($index % 40),
         };
 
-        $deal->created_at = now()->subDays($daysAgo + 5)->subHours($index % 12);
+        $deal->created_at = Carbon::instance(now()->subDays($daysAgo + 5)->subHours($index % 12));
 
         if ($deal->stage === DealStage::Sold || $deal->stage === DealStage::Lost) {
-            $deal->closed_at = now()->subDays($daysAgo)->subHours($index % 8);
+            $deal->closed_at = Carbon::instance(now()->subDays($daysAgo)->subHours($index % 8));
         }
 
         $deal->save();

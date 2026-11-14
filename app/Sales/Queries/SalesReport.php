@@ -107,7 +107,7 @@ class SalesReport
             ->unique()
             ->all();
 
-        return User::query()
+        return array_values(User::query()
             ->whereIn('id', $ids)
             ->orderBy('name')
             ->orderBy('id')
@@ -129,7 +129,7 @@ class SalesReport
                     'conversion' => $closed === 0 ? 0 : (int) round(($soldCount / $closed) * 100),
                 ];
             })
-            ->all();
+            ->all());
     }
 
     /**

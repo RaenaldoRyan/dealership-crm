@@ -14,6 +14,7 @@ use App\Inventory\Http\Requests\IndexVehicleRequest;
 use App\Inventory\Http\Requests\SaveVehicleRequest;
 use App\Inventory\Http\Requests\StoreVehicleRequest;
 use App\Inventory\Http\Requests\UpdateVehicleRequest;
+use App\Inventory\Http\Requests\VehicleRules;
 use App\Inventory\Models\Vehicle;
 use App\Inventory\Queries\VehicleIndex;
 use Illuminate\Http\RedirectResponse;
@@ -31,11 +32,13 @@ class VehicleController extends Controller
     {
         Gate::authorize('viewAny', Vehicle::class);
 
+        $status = $request->status();
+
         return Inertia::render('inventory/Index', [
-            'vehicles' => $vehicles->paginate($request->search(), $request->status()),
+            'vehicles' => $vehicles->paginate($request->search(), $status),
             'filters' => [
                 'search' => $request->search() ?? '',
-                'status' => $request->status()?->value ?? '',
+                'status' => $status === null ? '' : $status->value,
             ],
             'statuses' => $this->options(VehicleStatus::cases()),
         ]);
@@ -63,7 +66,7 @@ class VehicleController extends Controller
     {
         Gate::authorize('create', Vehicle::class);
 
-        $vehicle = $create->handle($this->actor($request), $request->validated());
+        $vehicle = $create->handle($this->actor($request), VehicleRules::attributesWithContact($request));
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Vehicle added.')]);
 
@@ -108,7 +111,7 @@ class VehicleController extends Controller
     {
         Gate::authorize('update', $vehicle);
 
-        $update->handle($this->actor($request), $vehicle, $request->validated());
+        $update->handle($this->actor($request), $vehicle, VehicleRules::attributesWithContact($request));
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Vehicle updated.')]);
 
@@ -120,7 +123,7 @@ class VehicleController extends Controller
      */
     public function storeForContact(StoreVehicleRequest $request, Contact $contact, CreateVehicle $create): RedirectResponse
     {
-        $create->handle($this->actor($request), $request->validated(), $contact);
+        $create->handle($this->actor($request), VehicleRules::attributes($request), $contact);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Vehicle added.')]);
 
@@ -144,7 +147,7 @@ class VehicleController extends Controller
     private function formOptions(User $user): array
     {
         return [
-            'contacts' => Contact::query()
+            'contacts' => array_values(Contact::query()
                 ->visibleTo($user)
                 ->orderBy('name')
                 ->get(['id', 'name'])
@@ -152,7 +155,7 @@ class VehicleController extends Controller
                     'id' => $contact->id,
                     'name' => $contact->name,
                 ])
-                ->all(),
+                ->all()),
             'fuels' => $this->options(FuelType::cases()),
             'transmissions' => $this->options(Transmission::cases()),
         ];

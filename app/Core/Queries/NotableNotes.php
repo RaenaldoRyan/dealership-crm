@@ -15,7 +15,7 @@ class NotableNotes
      */
     public function present(Model $notable): array
     {
-        return Note::query()
+        return array_values(Note::query()
             ->whereMorphedTo('notable', $notable)
             ->with('author:id,name')
             ->orderByDesc('created_at')
@@ -27,6 +27,6 @@ class NotableNotes
                 'author' => $note->author->name,
                 'time' => RelativeTime::format($note->created_at ?? now()),
             ])
-            ->all();
+            ->all());
     }
 }

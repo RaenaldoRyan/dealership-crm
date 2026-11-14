@@ -32,6 +32,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property-read User $owner
+ * @property-read int $open_deals_count
  * @property-read Collection<int, Vehicle> $vehicles
  * @property-read Collection<int, Deal> $deals
  * @property-read Collection<int, Note> $notes

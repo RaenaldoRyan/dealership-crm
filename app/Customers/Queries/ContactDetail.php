@@ -51,7 +51,7 @@ class ContactDetail
             'owner' => [
                 'name' => $contact->owner->name,
             ],
-            'vehicles' => $contact->vehicles
+            'vehicles' => array_values($contact->vehicles
                 ->map(fn (Vehicle $vehicle): array => [
                     'id' => $vehicle->id,
                     'year' => $vehicle->year,
@@ -60,8 +60,8 @@ class ContactDetail
                     'registration' => Registration::format($vehicle->registration),
                     'price' => $vehicle->price,
                 ])
-                ->all(),
-            'deals' => $contact->deals
+                ->all()),
+            'deals' => array_values($contact->deals
                 ->map(fn (Deal $deal): array => [
                     'id' => $deal->id,
                     'stage' => $deal->stage->value,
@@ -71,7 +71,7 @@ class ContactDetail
                         : $deal->vehicle->make.' '.$deal->vehicle->model,
                     'value' => $deal->value,
                 ])
-                ->all(),
+                ->all()),
             'notes' => $this->notes->present($contact),
             'activity' => $this->activity->present($viewer, $contact),
         ];

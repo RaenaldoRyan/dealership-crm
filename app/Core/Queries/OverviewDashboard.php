@@ -44,7 +44,7 @@ class OverviewDashboard
         return [
             'canFilterReps' => $user->role === Role::Manager,
             'reps' => $user->role === Role::Manager
-                ? User::query()
+                ? array_values(User::query()
                     ->where('role', Role::Rep)
                     ->orderBy('name')
                     ->orderBy('id')
@@ -53,7 +53,7 @@ class OverviewDashboard
                         'id' => $rep->id,
                         'name' => $rep->name,
                     ])
-                    ->all()
+                    ->all())
                 : [],
             'selectedRep' => $repId,
             'metrics' => $this->stats->present($user, $repId),
@@ -72,7 +72,7 @@ class OverviewDashboard
                 'linkedToDeals' => (clone $vehicles)->whereHas('deals')->count(),
                 'averagePrice' => number_format((float) ((clone $vehicles)->avg('price') ?? 0), 2, '.', ''),
             ],
-            'recentDeals' => (clone $deals)
+            'recentDeals' => array_values((clone $deals)
                 ->with(['contact:id,name', 'vehicle:id,make,model'])
                 ->latest()
                 ->orderByDesc('id')
@@ -88,7 +88,7 @@ class OverviewDashboard
                     'stage' => $deal->stage->value,
                     'stageLabel' => $deal->stage->label(),
                 ])
-                ->all(),
+                ->all()),
         ];
     }
 

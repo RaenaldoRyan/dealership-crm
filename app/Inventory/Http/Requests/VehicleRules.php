@@ -76,6 +76,49 @@ class VehicleRules
         }
     }
 
+    /**
+     * The validated vehicle, with each field in the type the action stores.
+     *
+     * @return array{make: string, model: string, year: int, registration: string, price: string, colour: string|null, fuel_type: string|null, transmission: string|null, mileage: int|null, vin: string|null}
+     */
+    public static function attributes(FormRequest $request): array
+    {
+        return [
+            'make' => $request->string('make')->toString(),
+            'model' => $request->string('model')->toString(),
+            'year' => $request->integer('year'),
+            'registration' => $request->string('registration')->toString(),
+            'price' => $request->string('price')->toString(),
+            'colour' => self::nullableString($request, 'colour'),
+            'fuel_type' => self::nullableString($request, 'fuel_type'),
+            'transmission' => self::nullableString($request, 'transmission'),
+            'mileage' => $request->filled('mileage') ? $request->integer('mileage') : null,
+            'vin' => self::nullableString($request, 'vin'),
+        ];
+    }
+
+    /**
+     * The validated vehicle, including the chosen customer.
+     *
+     * @return array{make: string, model: string, year: int, registration: string, price: string, colour: string|null, fuel_type: string|null, transmission: string|null, mileage: int|null, vin: string|null, contact_id: int|null}
+     */
+    public static function attributesWithContact(FormRequest $request): array
+    {
+        return [
+            ...self::attributes($request),
+            'contact_id' => $request->filled('contact_id') ? $request->integer('contact_id') : null,
+        ];
+    }
+
+    private static function nullableString(FormRequest $request, string $field): ?string
+    {
+        if (! $request->filled($field)) {
+            return null;
+        }
+
+        return $request->string($field)->toString();
+    }
+
     private static function plate(): Closure
     {
         return function (string $attribute, mixed $value, Closure $fail): void {

@@ -14,12 +14,12 @@ class UserIndex
      */
     public function all(): array
     {
-        return User::query()
+        return array_values(User::query()
             ->orderBy('name')
             ->orderBy('id')
             ->get()
             ->map(fn (User $user): array => $this->present($user))
-            ->all();
+            ->all());
     }
 
     /**
