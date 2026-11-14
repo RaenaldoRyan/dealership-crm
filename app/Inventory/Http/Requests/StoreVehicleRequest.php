@@ -20,6 +20,11 @@ class StoreVehicleRequest extends FormRequest
             && ($this->user()?->can('create', [Vehicle::class, $contact]) ?? false);
     }
 
+    protected function prepareForValidation(): void
+    {
+        VehicleRules::prepare($this);
+    }
+
     /**
      * Get the validation rules that apply to the request.
      *
@@ -27,12 +32,6 @@ class StoreVehicleRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [
-            'make' => ['required', 'string', 'max:255'],
-            'model' => ['required', 'string', 'max:255'],
-            'year' => ['required', 'integer', 'min:1900', 'max:'.(now()->year + 1)],
-            'registration' => ['required', 'string', 'max:32'],
-            'price' => ['required', 'numeric', 'min:0', 'decimal:0,2', 'max:99999999.99'],
-        ];
+        return VehicleRules::rules();
     }
 }

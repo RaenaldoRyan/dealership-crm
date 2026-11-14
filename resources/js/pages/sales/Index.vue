@@ -1,13 +1,21 @@
 <script setup lang="ts">
 import { Head, Link, router } from '@inertiajs/vue3';
+import { computed } from 'vue';
 import {
-    create,
     index,
+    show,
     update,
 } from '@/actions/App/Sales/Http/Controllers/DealController';
 import Heading from '@/components/Heading.vue';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
+import { formatPounds } from '@/lib/utils';
 
 type StageOption = {
     value: string;
@@ -29,128 +37,198 @@ type DealRow = {
     };
 };
 
-defineProps<{
+const props = defineProps<{
     deals: DealRow[];
     stages: StageOption[];
+    metrics: {
+        pipelineValue: string;
+        openDeals: number;
+        conversion: number;
+        averageDaysToClose: number;
+    };
 }>();
 
 defineOptions({
     layout: {
         breadcrumbs: [
             {
-                title: 'Deals',
+                title: 'Pipeline',
                 href: index(),
             },
         ],
     },
 });
 
-const stageClasses: Record<string, string> = {
-    enquiry:
-        'border-transparent bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-200',
-    test_drive:
-        'border-transparent bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200',
-    negotiation:
-        'border-transparent bg-violet-100 text-violet-900 dark:bg-violet-950 dark:text-violet-200',
-    sold: 'border-transparent bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200',
-    lost: 'border-transparent bg-rose-100 text-rose-900 dark:bg-rose-950 dark:text-rose-200',
+const stageColor: Record<string, string> = {
+    enquiry: 'var(--stage-enquiry)',
+    test_drive: 'var(--stage-test-drive)',
+    negotiation: 'var(--stage-negotiation)',
+    sold: 'var(--stage-sold)',
+    lost: 'var(--stage-lost)',
 };
 
 function stageLabel(stage: string, stages: StageOption[]): string {
     return stages.find((option) => option.value === stage)?.label ?? stage;
 }
 
-function formatValue(value: string): string {
-    return Number(value).toLocaleString(undefined, {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-    });
+function dealsFor(stage: string): DealRow[] {
+    return props.deals.filter((deal) => deal.stage === stage);
 }
 
-function changeStage(dealId: number, event: Event): void {
-    const stage = (event.target as HTMLSelectElement).value;
+function initials(name: string): string {
+    return name
+        .split(/\s+/)
+        .filter((part) => part !== '')
+        .slice(0, 2)
+        .map((part) => part.charAt(0).toUpperCase())
+        .join('');
+}
+
+const metricItems = computed(() => [
+    {
+        label: 'Pipeline value',
+        value: formatPounds(props.metrics.pipelineValue),
+        test: 'pipeline-value',
+    },
+    {
+        label: 'Open deals',
+        value: String(props.metrics.openDeals),
+        test: 'pipeline-open-deals',
+    },
+    {
+        label: 'Conversion',
+        value: `${props.metrics.conversion}%`,
+        test: 'pipeline-conversion',
+    },
+    {
+        label: 'Avg. days to close',
+        value: String(props.metrics.averageDaysToClose),
+        test: 'pipeline-average-days',
+    },
+]);
+
+function changeStage(dealId: number, stage: unknown): void {
+    if (typeof stage !== 'string' || stage === '') {
+        return;
+    }
 
     router.patch(update.url(dealId), { stage }, { preserveScroll: true });
 }
 </script>
 
 <template>
-    <div class="flex h-full flex-1 flex-col gap-4 p-4">
-        <Head title="Deals" />
+    <div class="flex h-full flex-1 flex-col gap-6 p-6">
+        <Head title="Pipeline" />
 
-        <div class="flex items-center justify-between gap-4">
-            <Heading
-                title="Deals"
-                description="Opportunities your team is working"
-            />
+        <Heading title="Pipeline" />
 
-            <Button as-child>
-                <Link :href="create()" data-test="create-deal">New deal</Link>
-            </Button>
+        <div class="flex flex-wrap" data-test="pipeline-metrics">
+            <div
+                v-for="(metric, index) in metricItems"
+                :key="metric.label"
+                class="grid gap-1 py-1 pr-8"
+                :class="index > 0 ? 'border-l pl-8' : ''"
+            >
+                <p class="text-sm text-muted-foreground">{{ metric.label }}</p>
+                <p
+                    class="font-heading text-3xl tabular-nums"
+                    :data-test="metric.test"
+                >
+                    {{ metric.value }}
+                </p>
+            </div>
         </div>
 
-        <div
-            class="overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border"
-        >
-            <table class="w-full text-sm">
-                <thead
-                    class="border-b border-sidebar-border/70 text-left text-muted-foreground dark:border-sidebar-border"
+        <p v-if="deals.length === 0" class="text-sm text-muted-foreground">
+            No deals yet.
+        </p>
+
+        <div class="grid gap-4 xl:grid-cols-5">
+            <section
+                v-for="stage in stages"
+                :key="stage.value"
+                class="flex min-w-0 flex-col gap-3"
+            >
+                <header class="flex items-center justify-between gap-3 px-1">
+                    <span class="text-sm font-medium">{{ stage.label }}</span>
+                    <span class="flex items-center gap-2 text-sm tabular-nums">
+                        <span
+                            class="inline-block size-1.5 rounded-full"
+                            :style="{ background: stageColor[stage.value] }"
+                        />
+                        <span :data-test="`stage-count-${stage.value}`">
+                            {{ dealsFor(stage.value).length }}
+                        </span>
+                    </span>
+                </header>
+
+                <Card
+                    v-for="deal in dealsFor(stage.value)"
+                    :key="deal.id"
+                    class="gap-3 py-4 shadow-none"
                 >
-                    <tr>
-                        <th class="px-4 py-3 font-medium">Contact</th>
-                        <th class="px-4 py-3 font-medium">Vehicle</th>
-                        <th class="px-4 py-3 font-medium">Owner</th>
-                        <th class="px-4 py-3 font-medium">Value</th>
-                        <th class="px-4 py-3 font-medium">Stage</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr v-if="deals.length === 0">
-                        <td
-                            colspan="5"
-                            class="px-4 py-8 text-center text-muted-foreground"
-                        >
-                            No deals yet.
-                        </td>
-                    </tr>
-                    <tr
-                        v-for="deal in deals"
-                        :key="deal.id"
-                        class="border-b border-sidebar-border/70 last:border-0 dark:border-sidebar-border"
-                    >
-                        <td class="px-4 py-3">{{ deal.contact.name }}</td>
-                        <td class="px-4 py-3">
-                            {{ deal.vehicle?.name ?? '—' }}
-                        </td>
-                        <td class="px-4 py-3">{{ deal.owner.name }}</td>
-                        <td class="px-4 py-3">{{ formatValue(deal.value) }}</td>
-                        <td class="px-4 py-3">
-                            <div class="flex items-center gap-3">
-                                <Badge
-                                    variant="outline"
-                                    :class="stageClasses[deal.stage]"
+                    <CardContent class="grid gap-3 px-4">
+                        <div class="flex items-start justify-between gap-3">
+                            <div class="min-w-0">
+                                <Link
+                                    :href="show(deal.id)"
+                                    class="truncate font-medium hover:text-primary"
                                 >
-                                    {{ stageLabel(deal.stage, stages) }}
-                                </Badge>
-                                <select
-                                    class="h-9 rounded-md border border-input bg-transparent px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:bg-input/30"
-                                    :value="deal.stage"
-                                    :data-test="`deal-stage-${deal.id}`"
-                                    @change="changeStage(deal.id, $event)"
+                                    {{ deal.contact.name }}
+                                </Link>
+                                <p
+                                    class="truncate text-sm text-muted-foreground"
                                 >
-                                    <option
-                                        v-for="stage in stages"
-                                        :key="stage.value"
-                                        :value="stage.value"
-                                    >
-                                        {{ stage.label }}
-                                    </option>
-                                </select>
+                                    {{ deal.vehicle?.name ?? 'No vehicle' }}
+                                </p>
                             </div>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
+                            <p class="shrink-0 text-sm tabular-nums">
+                                {{ formatPounds(deal.value) }}
+                            </p>
+                        </div>
+
+                        <div class="flex items-center justify-between gap-3">
+                            <div class="flex min-w-0 items-center gap-2">
+                                <span
+                                    class="inline-block size-1.5 shrink-0 rounded-full"
+                                    :style="{
+                                        background: stageColor[deal.stage],
+                                    }"
+                                />
+                                <Select
+                                    :model-value="deal.stage"
+                                    @update:model-value="
+                                        changeStage(deal.id, $event)
+                                    "
+                                >
+                                    <SelectTrigger
+                                        size="sm"
+                                        class="h-8 w-auto max-w-full border-transparent bg-transparent px-2 shadow-none"
+                                        :data-test="`deal-stage-${deal.id}`"
+                                        :aria-label="
+                                            stageLabel(deal.stage, stages)
+                                        "
+                                    >
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem
+                                            v-for="option in stages"
+                                            :key="option.value"
+                                            :value="option.value"
+                                        >
+                                            {{ option.label }}
+                                        </SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <span class="text-xs text-muted-foreground">
+                                {{ initials(deal.owner.name) }}
+                            </span>
+                        </div>
+                    </CardContent>
+                </Card>
+            </section>
         </div>
     </div>
 </template>

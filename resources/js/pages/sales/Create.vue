@@ -7,6 +7,13 @@ import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { create, index } from '@/routes/deals';
 
 type StageOption = {
@@ -28,13 +35,14 @@ type ContactOption = {
 const props = defineProps<{
     contacts: ContactOption[];
     stages: StageOption[];
+    contactId: number | null;
 }>();
 
 defineOptions({
     layout: {
         breadcrumbs: [
             {
-                title: 'Deals',
+                title: 'Pipeline',
                 href: index(),
             },
             {
@@ -45,8 +53,11 @@ defineOptions({
     },
 });
 
-const contactId = ref('');
+const contactId = ref<string | undefined>(
+    props.contactId === null ? undefined : String(props.contactId),
+);
 const vehicleId = ref('');
+const stage = ref(props.stages[0]?.value ?? '');
 
 const vehicles = computed(() => {
     return (
@@ -59,15 +70,22 @@ watch(contactId, () => {
     vehicleId.value = '';
 });
 
-const fieldClass =
-    'border-input placeholder:text-muted-foreground dark:bg-input/30 h-9 w-full rounded-md border bg-transparent px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]';
+function chooseVehicle(value: unknown): void {
+    if (value === 'none' || typeof value !== 'string') {
+        vehicleId.value = '';
+
+        return;
+    }
+
+    vehicleId.value = value;
+}
 </script>
 
 <template>
-    <div class="flex h-full flex-1 flex-col gap-4 p-4">
+    <div class="flex h-full flex-1 flex-col gap-6 p-6">
         <Head title="New deal" />
 
-        <Heading title="New deal" description="This deal will belong to you" />
+        <Heading title="New deal" />
 
         <p v-if="contacts.length === 0" class="text-sm text-muted-foreground">
             Add a contact before opening a deal.
@@ -76,49 +94,62 @@ const fieldClass =
         <Form
             v-else
             v-bind="DealController.store.form()"
-            class="max-w-xl space-y-6"
+            class="max-w-xl space-y-6 rounded-xl border bg-card p-6 shadow-none"
             v-slot="{ errors, processing }"
         >
             <div class="grid gap-2">
                 <Label for="contact_id">Contact</Label>
-                <select
-                    id="contact_id"
-                    v-model="contactId"
-                    name="contact_id"
-                    required
-                    :class="fieldClass"
-                    data-test="deal-contact"
-                >
-                    <option value="" disabled>Select a contact</option>
-                    <option
-                        v-for="contact in contacts"
-                        :key="contact.id"
-                        :value="String(contact.id)"
+                <Select v-model="contactId">
+                    <SelectTrigger
+                        id="contact_id"
+                        class="w-full shadow-none"
+                        data-test="deal-contact"
                     >
-                        {{ contact.name }}
-                    </option>
-                </select>
+                        <SelectValue placeholder="Select a contact" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem
+                            v-for="contact in contacts"
+                            :key="contact.id"
+                            :value="String(contact.id)"
+                        >
+                            {{ contact.name }}
+                        </SelectItem>
+                    </SelectContent>
+                </Select>
+                <input
+                    type="hidden"
+                    name="contact_id"
+                    :value="contactId ?? ''"
+                />
                 <InputError :message="errors.contact_id" />
             </div>
 
             <div class="grid gap-2">
                 <Label for="vehicle_id">Vehicle</Label>
-                <select
-                    id="vehicle_id"
-                    v-model="vehicleId"
-                    name="vehicle_id"
-                    :class="fieldClass"
-                    data-test="deal-vehicle"
+                <Select
+                    :model-value="vehicleId === '' ? 'none' : vehicleId"
+                    @update:model-value="chooseVehicle"
                 >
-                    <option value="">No vehicle</option>
-                    <option
-                        v-for="vehicle in vehicles"
-                        :key="vehicle.id"
-                        :value="String(vehicle.id)"
+                    <SelectTrigger
+                        id="vehicle_id"
+                        class="w-full shadow-none"
+                        data-test="deal-vehicle"
                     >
-                        {{ vehicle.label }}
-                    </option>
-                </select>
+                        <SelectValue placeholder="No vehicle" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="none">No vehicle</SelectItem>
+                        <SelectItem
+                            v-for="vehicle in vehicles"
+                            :key="vehicle.id"
+                            :value="String(vehicle.id)"
+                        >
+                            {{ vehicle.label }}
+                        </SelectItem>
+                    </SelectContent>
+                </Select>
+                <input type="hidden" name="vehicle_id" :value="vehicleId" />
                 <InputError :message="errors.vehicle_id" />
             </div>
 
@@ -138,21 +169,25 @@ const fieldClass =
 
             <div class="grid gap-2">
                 <Label for="stage">Stage</Label>
-                <select
-                    id="stage"
-                    name="stage"
-                    required
-                    :class="fieldClass"
-                    data-test="deal-stage"
-                >
-                    <option
-                        v-for="stage in stages"
-                        :key="stage.value"
-                        :value="stage.value"
+                <Select v-model="stage">
+                    <SelectTrigger
+                        id="stage"
+                        class="w-full shadow-none"
+                        data-test="deal-stage"
                     >
-                        {{ stage.label }}
-                    </option>
-                </select>
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem
+                            v-for="option in stages"
+                            :key="option.value"
+                            :value="option.value"
+                        >
+                            {{ option.label }}
+                        </SelectItem>
+                    </SelectContent>
+                </Select>
+                <input type="hidden" name="stage" :value="stage" />
                 <InputError :message="errors.stage" />
             </div>
 

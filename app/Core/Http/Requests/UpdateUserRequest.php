@@ -40,6 +40,7 @@ class UpdateUserRequest extends FormRequest
                 Rule::unique(User::class, 'email')->ignore($user instanceof User ? $user : null),
             ],
             'role' => ['required', Rule::enum(Role::class)],
+            'is_active' => ['sometimes', 'boolean'],
         ];
     }
 }

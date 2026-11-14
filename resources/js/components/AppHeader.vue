@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
 import {
-    BookOpen,
-    Folder,
     Handshake,
     LayoutGrid,
     Menu,
@@ -34,18 +32,11 @@ import {
     SheetTitle,
     SheetTrigger,
 } from '@/components/ui/sheet';
-import {
-    Tooltip,
-    TooltipContent,
-    TooltipProvider,
-    TooltipTrigger,
-} from '@/components/ui/tooltip';
 import UserMenuContent from '@/components/UserMenuContent.vue';
 import { useCurrentUrl } from '@/composables/useCurrentUrl';
 import { getInitials } from '@/composables/useInitials';
-import { toUrl } from '@/lib/utils';
 import { index as contacts } from '@/routes/contacts';
-import { dashboard } from '@/routes';
+import { overview } from '@/routes';
 import { index as deals } from '@/routes/deals';
 import { index as users } from '@/routes/users';
 import type { BreadcrumbItem, NavItem } from '@/types';
@@ -62,14 +53,13 @@ const page = usePage();
 const auth = computed(() => page.props.auth);
 const { isCurrentUrl, whenCurrentUrl } = useCurrentUrl();
 
-const activeItemStyles =
-    'text-neutral-900 dark:bg-neutral-800 dark:text-neutral-100';
+const activeItemStyles = 'text-primary';
 
 const mainNavItems = computed<NavItem[]>(() => {
     const items: NavItem[] = [
         {
-            title: 'Dashboard',
-            href: dashboard(),
+            title: 'Overview',
+            href: overview(),
             icon: LayoutGrid,
         },
         {
@@ -78,35 +68,28 @@ const mainNavItems = computed<NavItem[]>(() => {
             icon: Users,
         },
         {
-            title: 'Deals',
+            title: 'Pipeline',
             href: deals(),
             icon: Handshake,
         },
     ];
 
-    if (page.props.can.manageUsers) {
-        items.push({
-            title: 'Users',
-            href: users(),
-            icon: UserCog,
-        });
-    }
-
     return items;
 });
 
-const rightNavItems: NavItem[] = [
-    {
-        title: 'Repository',
-        href: 'https://github.com/laravel/vue-starter-kit',
-        icon: Folder,
-    },
-    {
-        title: 'Documentation',
-        href: 'https://laravel.com/docs/starter-kits#vue',
-        icon: BookOpen,
-    },
-];
+const adminNavItems = computed<NavItem[]>(() => {
+    if (!page.props.can.manageUsers) {
+        return [];
+    }
+
+    return [
+        {
+            title: 'Users',
+            href: users(),
+            icon: UserCog,
+        },
+    ];
+});
 </script>
 
 <template>
@@ -130,9 +113,7 @@ const rightNavItems: NavItem[] = [
                                 >Navigation menu</SheetTitle
                             >
                             <SheetHeader class="flex justify-start text-left">
-                                <AppLogoIcon
-                                    class="size-6 fill-current text-black dark:text-white"
-                                />
+                                <AppLogoIcon class="size-6" />
                             </SheetHeader>
                             <div
                                 class="flex h-full flex-1 flex-col justify-between space-y-4 py-6"
@@ -157,30 +138,38 @@ const rightNavItems: NavItem[] = [
                                         />
                                         {{ item.title }}
                                     </Link>
-                                </nav>
-                                <div class="flex flex-col space-y-4">
-                                    <a
-                                        v-for="item in rightNavItems"
+                                    <p
+                                        v-if="adminNavItems.length > 0"
+                                        class="px-3 pt-4 text-xs font-medium text-muted-foreground"
+                                    >
+                                        Admin
+                                    </p>
+                                    <Link
+                                        v-for="item in adminNavItems"
                                         :key="item.title"
-                                        :href="toUrl(item.href)"
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        class="flex items-center space-x-2 text-sm font-medium"
+                                        :href="item.href"
+                                        class="flex items-center gap-x-3 rounded-lg px-3 py-2 text-sm font-medium hover:bg-accent"
+                                        :class="
+                                            whenCurrentUrl(
+                                                item.href,
+                                                activeItemStyles,
+                                            )
+                                        "
                                     >
                                         <component
                                             v-if="item.icon"
                                             :is="item.icon"
                                             class="h-5 w-5"
                                         />
-                                        <span>{{ item.title }}</span>
-                                    </a>
-                                </div>
+                                        {{ item.title }}
+                                    </Link>
+                                </nav>
                             </div>
                         </SheetContent>
                     </Sheet>
                 </div>
 
-                <Link :href="dashboard()" class="flex items-center gap-x-2">
+                <Link :href="overview()" class="flex items-center gap-x-2">
                     <AppLogo />
                 </Link>
 
@@ -215,7 +204,41 @@ const rightNavItems: NavItem[] = [
                                 </Link>
                                 <div
                                     v-if="isCurrentUrl(item.href)"
-                                    class="absolute bottom-0 left-0 h-0.5 w-full translate-y-px bg-black dark:bg-white"
+                                    class="absolute bottom-0 left-0 h-0.5 w-full translate-y-px bg-primary"
+                                ></div>
+                            </NavigationMenuItem>
+                            <NavigationMenuItem
+                                v-if="adminNavItems.length > 0"
+                                class="relative flex h-full items-center px-3 text-xs font-medium text-muted-foreground"
+                            >
+                                Admin
+                            </NavigationMenuItem>
+                            <NavigationMenuItem
+                                v-for="item in adminNavItems"
+                                :key="item.title"
+                                class="relative flex h-full items-center"
+                            >
+                                <Link
+                                    :class="[
+                                        navigationMenuTriggerStyle(),
+                                        whenCurrentUrl(
+                                            item.href,
+                                            activeItemStyles,
+                                        ),
+                                        'h-9 cursor-pointer px-3',
+                                    ]"
+                                    :href="item.href"
+                                >
+                                    <component
+                                        v-if="item.icon"
+                                        :is="item.icon"
+                                        class="mr-2 h-4 w-4"
+                                    />
+                                    {{ item.title }}
+                                </Link>
+                                <div
+                                    v-if="isCurrentUrl(item.href)"
+                                    class="absolute bottom-0 left-0 h-0.5 w-full translate-y-px bg-primary"
                                 ></div>
                             </NavigationMenuItem>
                         </NavigationMenuList>
@@ -233,43 +256,6 @@ const rightNavItems: NavItem[] = [
                                 class="size-5 opacity-80 group-hover:opacity-100"
                             />
                         </Button>
-
-                        <div class="hidden space-x-1 lg:flex">
-                            <template
-                                v-for="item in rightNavItems"
-                                :key="item.title"
-                            >
-                                <TooltipProvider :delay-duration="0">
-                                    <Tooltip>
-                                        <TooltipTrigger>
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                as-child
-                                                class="group h-9 w-9 cursor-pointer"
-                                            >
-                                                <a
-                                                    :href="toUrl(item.href)"
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                >
-                                                    <span class="sr-only">{{
-                                                        item.title
-                                                    }}</span>
-                                                    <component
-                                                        :is="item.icon"
-                                                        class="size-5 opacity-80 group-hover:opacity-100"
-                                                    />
-                                                </a>
-                                            </Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent>
-                                            <p>{{ item.title }}</p>
-                                        </TooltipContent>
-                                    </Tooltip>
-                                </TooltipProvider>
-                            </template>
-                        </div>
                     </div>
 
                     <DropdownMenu>

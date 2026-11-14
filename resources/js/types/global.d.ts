@@ -21,6 +21,7 @@ declare module '@inertiajs/core' {
             auth: Auth;
             can: {
                 manageUsers: boolean;
+                viewReports: boolean;
             };
             sidebarOpen: boolean;
             [key: string]: unknown;

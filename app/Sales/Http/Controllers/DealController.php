@@ -2,13 +2,23 @@
 
 namespace App\Sales\Http\Controllers;
 
+use App\Core\Actions\AddNote;
+use App\Core\Models\User;
 use App\Customers\Models\Contact;
 use App\Http\Controllers\Controller;
 use App\Inventory\Models\Vehicle;
+use App\Sales\Actions\ChangeDealStage;
+use App\Sales\Actions\CreateDeal;
+use App\Sales\Actions\MarkDealAsSold;
 use App\Sales\Enums\DealStage;
+use App\Sales\Http\Requests\SoldDealRequest;
+use App\Sales\Http\Requests\StoreDealNoteRequest;
 use App\Sales\Http\Requests\StoreDealRequest;
 use App\Sales\Http\Requests\UpdateDealRequest;
 use App\Sales\Models\Deal;
+use App\Sales\Queries\DealDetail;
+use App\Sales\Queries\PipelineBoard;
+use App\Sales\Queries\PipelineStats;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -20,26 +30,16 @@ class DealController extends Controller
     /**
      * Show the deals the current user is allowed to see.
      */
-    public function index(Request $request): Response
+    public function index(Request $request, PipelineBoard $board, PipelineStats $stats): Response
     {
         Gate::authorize('viewAny', Deal::class);
 
-        $deals = Deal::query()
-            ->visibleTo($request->user())
-            ->with([
-                'contact:id,name',
-                'vehicle:id,make,model',
-                'owner:id,name',
-            ])
-            ->latest()
-            ->orderByDesc('id')
-            ->get()
-            ->map(fn (Deal $deal): array => $this->present($deal))
-            ->all();
+        $user = $this->actor($request);
 
         return Inertia::render('sales/Index', [
-            'deals' => $deals,
+            'deals' => $board->present($user),
             'stages' => $this->stages(),
+            'metrics' => $stats->present($user),
         ]);
     }
 
@@ -68,18 +68,24 @@ class DealController extends Controller
             ])
             ->all();
 
+        $requested = $request->integer('contact');
+        $contactId = collect($contacts)->contains('id', $requested) ? $requested : null;
+
         return Inertia::render('sales/Create', [
             'contacts' => $contacts,
             'stages' => $this->stages(),
+            'contactId' => $contactId,
         ]);
     }
 
     /**
      * Store a deal owned by the current user.
      */
-    public function store(StoreDealRequest $request): RedirectResponse
+    public function store(StoreDealRequest $request, CreateDeal $create): RedirectResponse
     {
-        $request->user()->deals()->create($request->validated());
+        Gate::authorize('create', Deal::class);
+
+        $create->handle($this->actor($request), $request->validated());
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Deal created.')]);
 
@@ -87,36 +93,73 @@ class DealController extends Controller
     }
 
     /**
-     * Update the stage of a deal the user is allowed to manage.
+     * Show a deal.
      */
-    public function update(UpdateDealRequest $request, Deal $deal): RedirectResponse
+    public function show(Deal $deal, DealDetail $detail): Response
     {
-        $deal->update($request->safe()->only(['stage']));
+        Gate::authorize('view', $deal);
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => __('Deal stage updated.')]);
-
-        return to_route('deals.index');
+        return Inertia::render('sales/Show', [
+            'deal' => $detail->present($deal),
+            'stages' => $this->stages(),
+        ]);
     }
 
     /**
-     * @return array{id: int, value: string, stage: string, contact: array{name: string}, vehicle: array{name: string}|null, owner: array{name: string}}
+     * Update the stage of a deal the user is allowed to manage.
      */
-    private function present(Deal $deal): array
+    public function update(UpdateDealRequest $request, Deal $deal, ChangeDealStage $change): RedirectResponse
     {
-        return [
-            'id' => $deal->id,
-            'value' => $deal->value,
-            'stage' => $deal->stage->value,
-            'contact' => [
-                'name' => $deal->contact->name,
-            ],
-            'vehicle' => $deal->vehicle === null ? null : [
-                'name' => $deal->vehicle->make.' '.$deal->vehicle->model,
-            ],
-            'owner' => [
-                'name' => $deal->owner->name,
-            ],
-        ];
+        Gate::authorize('update', $deal);
+
+        $change->handle(
+            $this->actor($request),
+            $deal,
+            DealStage::from((string) $request->validated('stage')),
+        );
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Deal stage updated.')]);
+
+        return redirect()->back(fallback: route('deals.index'));
+    }
+
+    /**
+     * Mark a deal, and its vehicle, as sold.
+     */
+    public function sold(SoldDealRequest $request, Deal $deal, MarkDealAsSold $mark): RedirectResponse
+    {
+        Gate::authorize('update', $deal);
+
+        $mark->handle($this->actor($request), $deal);
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Deal marked as sold.')]);
+
+        return to_route('deals.show', $deal);
+    }
+
+    /**
+     * Add a note to a deal.
+     */
+    public function storeNote(StoreDealNoteRequest $request, Deal $deal, AddNote $add): RedirectResponse
+    {
+        Gate::authorize('update', $deal);
+
+        $add->handle($this->actor($request), $deal, (string) $request->validated('body'));
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Note added.')]);
+
+        return to_route('deals.show', $deal);
+    }
+
+    private function actor(Request $request): User
+    {
+        $user = $request->user();
+
+        if (! $user instanceof User) {
+            abort(403);
+        }
+
+        return $user;
     }
 
     /**

@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Core\Models\User;
+use App\Sales\Models\Deal;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -44,6 +45,7 @@ class HandleInertiaRequests extends Middleware
             ],
             'can' => [
                 'manageUsers' => $request->user()?->can('viewAny', User::class) ?? false,
+                'viewReports' => $request->user()?->can('viewReports', Deal::class) ?? false,
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
         ];

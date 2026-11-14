@@ -13,7 +13,7 @@ enum Role: string
     public function label(): string
     {
         return match ($this) {
-            self::Rep => 'Rep',
+            self::Rep => 'Sales rep',
             self::Manager => 'Manager',
         };
     }

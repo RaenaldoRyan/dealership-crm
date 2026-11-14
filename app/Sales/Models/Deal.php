@@ -3,20 +3,25 @@
 namespace App\Sales\Models;
 
 use App\Core\Enums\Role;
+use App\Core\Models\Activity;
+use App\Core\Models\Note;
 use App\Core\Models\User;
 use App\Customers\Models\Contact;
 use App\Inventory\Models\Vehicle;
 use App\Sales\Enums\DealStage;
 use App\Sales\Policies\DealPolicy;
+use Carbon\CarbonInterface;
 use Database\Factories\DealFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Scope;
 use Illuminate\Database\Eloquent\Attributes\UseFactory;
 use Illuminate\Database\Eloquent\Attributes\UsePolicy;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Support\Carbon;
 
 /**
@@ -26,11 +31,14 @@ use Illuminate\Support\Carbon;
  * @property int $user_id
  * @property string $value
  * @property DealStage $stage
+ * @property CarbonInterface|null $closed_at
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property-read Contact $contact
  * @property-read Vehicle|null $vehicle
  * @property-read User $owner
+ * @property-read Collection<int, Note> $notes
+ * @property-read Collection<int, Activity> $activities
  */
 #[UseFactory(DealFactory::class)]
 #[UsePolicy(DealPolicy::class)]
@@ -39,6 +47,19 @@ class Deal extends Model
 {
     /** @use HasFactory<DealFactory> */
     use HasFactory;
+
+    protected static function booted(): void
+    {
+        static::saving(function (Deal $deal): void {
+            if ($deal->stage === DealStage::Sold || $deal->stage === DealStage::Lost) {
+                $deal->closed_at ??= now();
+
+                return;
+            }
+
+            $deal->closed_at = null;
+        });
+    }
 
     /**
      * The contact this deal is with.
@@ -71,6 +92,26 @@ class Deal extends Model
     }
 
     /**
+     * Notes written about this deal.
+     *
+     * @return MorphMany<Note, $this>
+     */
+    public function notes(): MorphMany
+    {
+        return $this->morphMany(Note::class, 'notable');
+    }
+
+    /**
+     * Activity recorded against this deal.
+     *
+     * @return MorphMany<Activity, $this>
+     */
+    public function activities(): MorphMany
+    {
+        return $this->morphMany(Activity::class, 'subject');
+    }
+
+    /**
      * Limit the query to deals the user is allowed to see.
      *
      * Managers see every deal. Everyone else sees the deals they own.
@@ -96,6 +137,7 @@ class Deal extends Model
         return [
             'value' => 'decimal:2',
             'stage' => DealStage::class,
+            'closed_at' => 'datetime',
         ];
     }
 }

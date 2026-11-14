@@ -18,6 +18,13 @@ pest()->extend(TestCase::class)
     ->use(RefreshDatabase::class)
     ->in('Feature');
 
+pest()->extend(TestCase::class)
+    ->use(RefreshDatabase::class)
+    ->in('Unit/Inventory/Actions', 'Unit/Customers/Actions', 'Unit/Sales/Actions', 'Unit/Core/Actions');
+
+pest()->extend(TestCase::class)
+    ->in('Unit/Core/Support');
+
 /*
 |--------------------------------------------------------------------------
 | Expectations

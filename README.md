@@ -1,6 +1,10 @@
-# CRM
+# Dealership CRM
 
 A sales CRM for one car dealership. The dealership stops losing track of leads, and the manager can see where every sale stands without chasing people.
+
+![Pipeline](brand/mockups/02-pipeline-light.jpg)
+![Contacts](brand/mockups/04-contacts-light.jpg)
+![Deal](brand/mockups/08-deal-detail-light.jpg)
 
 Reps keep their own customers, vehicles, and deals. A manager sees the whole pipeline, from the first enquiry through to sold or lost.
 
@@ -56,16 +60,16 @@ The app is served at the `APP_URL` in `.env`. With `php artisan serve`, that is 
 
 Every account uses the password `password`.
 
-| Role | Name | Email |
-| --- | --- | --- |
-| Manager | Morgan Hale | manager@crm.test |
-| Rep | Demo Rep | demo@crm.test |
-| Rep | Sam Adeyemi | sam@crm.test |
+| Role          | Name           | Email              |
+| ------------- | -------------- | ------------------ |
+| Manager       | James Whitaker | james@dealer.co.uk |
+| Rep           | Priya Shah     | priya@dealer.co.uk |
+| Rep           | Owen Clarke    | owen@dealer.co.uk  |
+| Rep, inactive | Nia Bennett    | nia@dealer.co.uk   |
 
-The seed creates 10 contacts, each with a vehicle, split between the two reps. Five deals cover every stage. A rep's lists show only their own records. The manager sees all of them.
+The seed creates 40 contacts, 50 vehicles (stock and customer cars), and 60 deals across every stage, with notes and activity. A rep's lists show only their own records. The manager sees all of them. Nia Bennett cannot sign in.
 
 ## Next
 
 - Sanctum API
 - AI notes summary
-- GitHub Actions

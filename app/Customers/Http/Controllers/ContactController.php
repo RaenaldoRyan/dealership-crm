@@ -2,11 +2,20 @@
 
 namespace App\Customers\Http\Controllers;
 
+use App\Core\Actions\AddNote;
+use App\Core\Models\User;
+use App\Customers\Actions\CreateContact;
+use App\Customers\Actions\UpdateContact;
+use App\Customers\Http\Requests\IndexContactRequest;
+use App\Customers\Http\Requests\StoreContactNoteRequest;
 use App\Customers\Http\Requests\StoreContactRequest;
 use App\Customers\Http\Requests\UpdateContactRequest;
 use App\Customers\Models\Contact;
+use App\Customers\Queries\ContactDetail;
+use App\Customers\Queries\ContactIndex;
 use App\Http\Controllers\Controller;
 use App\Inventory\Models\Vehicle;
+use App\Inventory\Support\Registration;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -19,21 +28,20 @@ class ContactController extends Controller
     /**
      * Show the contacts the current user is allowed to see.
      */
-    public function index(Request $request): Response
+    public function index(IndexContactRequest $request, ContactIndex $contacts): Response
     {
         Gate::authorize('viewAny', Contact::class);
 
-        $contacts = Contact::query()
-            ->visibleTo($request->user())
-            ->with('owner:id,name')
-            ->latest()
-            ->orderByDesc('id')
-            ->get()
-            ->map(fn (Contact $contact): array => $this->present($contact))
-            ->all();
-
         return Inertia::render('customers/Index', [
-            'contacts' => $contacts,
+            'contacts' => $contacts->paginate(
+                $this->actor($request),
+                $request->search(),
+                $request->filter(),
+            ),
+            'filters' => [
+                'search' => $request->search() ?? '',
+                'filter' => $request->filter(),
+            ],
         ]);
     }
 
@@ -50,13 +58,27 @@ class ContactController extends Controller
     /**
      * Store a contact owned by the current user.
      */
-    public function store(StoreContactRequest $request): RedirectResponse
+    public function store(StoreContactRequest $request, CreateContact $create): RedirectResponse
     {
-        $request->user()->contacts()->create($request->validated());
+        Gate::authorize('create', Contact::class);
+
+        $create->handle($this->actor($request), $request->validated());
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Contact created.')]);
 
         return to_route('contacts.index');
+    }
+
+    /**
+     * Show a contact, with their vehicles and deals.
+     */
+    public function show(Request $request, Contact $contact, ContactDetail $detail): Response
+    {
+        Gate::authorize('view', $contact);
+
+        return Inertia::render('customers/Show', [
+            'contact' => $detail->present($this->actor($request), $contact),
+        ]);
     }
 
     /**
@@ -82,13 +104,40 @@ class ContactController extends Controller
     /**
      * Update a contact without changing its owner.
      */
-    public function update(UpdateContactRequest $request, Contact $contact): RedirectResponse
+    public function update(UpdateContactRequest $request, Contact $contact, UpdateContact $update): RedirectResponse
     {
-        $contact->update($request->validated());
+        Gate::authorize('update', $contact);
+
+        $update->handle($this->actor($request), $contact, $request->validated());
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Contact updated.')]);
 
         return to_route('contacts.index');
+    }
+
+    /**
+     * Add a note to a contact.
+     */
+    public function storeNote(StoreContactNoteRequest $request, Contact $contact, AddNote $add): RedirectResponse
+    {
+        Gate::authorize('update', $contact);
+
+        $add->handle($this->actor($request), $contact, (string) $request->validated('body'));
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Note added.')]);
+
+        return to_route('contacts.show', $contact);
+    }
+
+    private function actor(Request $request): User
+    {
+        $user = $request->user();
+
+        if (! $user instanceof User) {
+            abort(403);
+        }
+
+        return $user;
     }
 
     /**
@@ -117,7 +166,7 @@ class ContactController extends Controller
             'make' => $vehicle->make,
             'model' => $vehicle->model,
             'year' => $vehicle->year,
-            'registration' => $vehicle->registration,
+            'registration' => Registration::format($vehicle->registration),
             'price' => $vehicle->price,
         ];
     }

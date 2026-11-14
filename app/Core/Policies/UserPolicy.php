@@ -40,17 +40,11 @@ class UserPolicy
     }
 
     /**
-     * Determine whether the user can delete a staff record.
-     *
-     * Managers can remove other people. Nobody can delete themselves.
+     * Staff accounts are never deleted.
      */
     public function delete(User $user, User $model): bool
     {
-        if ($user->is($model)) {
-            return false;
-        }
-
-        return $this->isManager($user);
+        return false;
     }
 
     /**

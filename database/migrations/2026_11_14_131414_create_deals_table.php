@@ -16,7 +16,7 @@ return new class extends Migration
             $table->foreignId('contact_id')->constrained()->cascadeOnDelete();
             $table->foreignId('vehicle_id')->nullable()->constrained()->nullOnDelete();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
-            $table->decimal('value', 10, 2);
+            $table->decimal('value', 12, 2);
             $table->string('stage')->default('enquiry');
             $table->timestamps();
         });

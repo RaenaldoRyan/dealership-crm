@@ -29,6 +29,7 @@ class StoreUserRequest extends FormRequest
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', Rule::unique(User::class, 'email')],
             'role' => ['required', Rule::enum(Role::class)],
+            'is_active' => ['sometimes', 'boolean'],
         ];
     }
 }

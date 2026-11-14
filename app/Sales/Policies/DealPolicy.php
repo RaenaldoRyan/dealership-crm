@@ -41,6 +41,14 @@ class DealPolicy
     }
 
     /**
+     * Sales reports are for managers.
+     */
+    public function viewReports(User $user): bool
+    {
+        return $user->role === Role::Manager;
+    }
+
+    /**
      * Reps and managers are the roles that work deals.
      */
     private function worksWithDeals(User $user): bool

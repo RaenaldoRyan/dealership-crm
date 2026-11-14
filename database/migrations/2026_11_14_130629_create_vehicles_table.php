@@ -13,12 +13,12 @@ return new class extends Migration
     {
         Schema::create('vehicles', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('contact_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('contact_id')->nullable()->constrained()->cascadeOnDelete();
             $table->string('make');
             $table->string('model');
             $table->unsignedSmallInteger('year');
-            $table->string('registration');
-            $table->decimal('price', 10, 2);
+            $table->string('registration', 191);
+            $table->decimal('price', 12, 2);
             $table->timestamps();
         });
     }

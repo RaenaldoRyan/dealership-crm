@@ -2,6 +2,7 @@
 
 use App\Core\Models\User;
 use App\Customers\Models\Contact;
+use App\Inventory\Enums\VehicleStatus;
 use App\Inventory\Models\Vehicle;
 use App\Sales\Enums\DealStage;
 use App\Sales\Models\Deal;
@@ -79,6 +80,10 @@ test('the deal index only shows a reps own deals', function () {
             ->has('deals', 1)
             ->where('deals.0.owner.name', 'Riley Rep')
             ->where('deals.0.value', '1000.00')
+            ->where('metrics.pipelineValue', '1000.00')
+            ->where('metrics.openDeals', 1)
+            ->where('metrics.conversion', 0)
+            ->where('metrics.averageDaysToClose', 0)
         );
 });
 
@@ -96,6 +101,10 @@ test('a manager sees every deal', function () {
         ->assertInertia(fn (Assert $page) => $page
             ->component('sales/Index')
             ->has('deals', 2)
+            ->where('metrics.pipelineValue', '3000.00')
+            ->where('metrics.openDeals', 2)
+            ->where('metrics.conversion', 0)
+            ->where('metrics.averageDaysToClose', 0)
             ->where('deals', function (mixed $deals): bool {
                 $owners = collect($deals)->pluck('owner.name')->sort()->values()->all();
 
@@ -113,6 +122,7 @@ test('a rep can change the stage of their own deal', function () {
     ]);
 
     $this->actingAs($rep)
+        ->from(route('deals.index'))
         ->patch(route('deals.update', $deal), [
             'stage' => DealStage::Sold->value,
             'value' => '1.00',
@@ -156,6 +166,7 @@ test('a manager can change another reps deal stage', function () {
     ]);
 
     $this->actingAs($manager)
+        ->from(route('deals.index'))
         ->patch(route('deals.update', $deal), [
             'stage' => DealStage::Negotiation->value,
         ])
@@ -203,6 +214,27 @@ test('the create form only offers a reps own contacts', function () {
             ->component('sales/Create')
             ->has('contacts', 1)
             ->where('contacts.0.name', 'Own Contact')
+        );
+});
+
+test('a new deal can start with the contact already chosen', function () {
+    $rep = User::factory()->rep()->create();
+    $other = User::factory()->rep()->create();
+    $contact = Contact::factory()->for($rep, 'owner')->create();
+    $hidden = Contact::factory()->for($other, 'owner')->create();
+
+    $this->actingAs($rep)
+        ->get(route('deals.create', ['contact' => $contact->id]))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('contactId', $contact->id)
+        );
+
+    $this->actingAs($rep)
+        ->get(route('deals.create', ['contact' => $hidden->id]))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('contactId', null)
         );
 });
 
@@ -290,4 +322,260 @@ test('a deal requires a contact, value, and stage', function () {
         ->assertRedirect(route('deals.create'));
 
     $this->assertDatabaseCount('deals', 0);
+});
+
+test('a rep can open their own deal', function () {
+    $rep = User::factory()->rep()->create(['name' => 'Riley Rep']);
+    $contact = Contact::factory()->for($rep, 'owner')->create([
+        'name' => 'Ada Lovelace',
+        'email' => 'ada@example.com',
+        'phone' => '555-0100',
+    ]);
+    $vehicle = Vehicle::factory()->for($contact)->create([
+        'make' => 'Ford',
+        'model' => 'Puma',
+        'year' => 2022,
+        'registration' => 'AB22 CDE',
+        'price' => '24995.00',
+    ]);
+    $deal = Deal::factory()->for($rep, 'owner')->for($contact)->for($vehicle)->create([
+        'value' => '24000.00',
+        'stage' => DealStage::TestDrive,
+    ]);
+
+    $this->actingAs($rep)
+        ->get(route('deals.show', $deal))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('sales/Show')
+            ->where('deal.id', $deal->id)
+            ->where('deal.value', '24000.00')
+            ->where('deal.stage', 'test_drive')
+            ->where('deal.contact.name', 'Ada Lovelace')
+            ->where('deal.contact.email', 'ada@example.com')
+            ->where('deal.contact.phone', '555-0100')
+            ->where('deal.contact.owner.name', 'Riley Rep')
+            ->where('deal.vehicle.make', 'Ford')
+            ->where('deal.vehicle.model', 'Puma')
+            ->where('deal.vehicle.year', 2022)
+            ->where('deal.vehicle.registration', 'AB22 CDE')
+            ->where('deal.vehicle.price', '24995.00')
+            ->has('stages', 5)
+        );
+});
+
+test('a manager can open another reps deal', function () {
+    $manager = User::factory()->manager()->create();
+    $rep = User::factory()->rep()->create();
+    $deal = Deal::factory()->for($rep, 'owner')->create();
+
+    $this->actingAs($manager)
+        ->get(route('deals.show', $deal))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('sales/Show')
+            ->where('deal.id', $deal->id)
+            ->where('deal.vehicle', null)
+        );
+});
+
+test('a rep gets 403 opening another reps deal', function () {
+    $rep = User::factory()->rep()->create();
+    $other = User::factory()->rep()->create();
+    $deal = Deal::factory()->for($other, 'owner')->create();
+
+    $this->actingAs($rep)
+        ->get(route('deals.show', $deal))
+        ->assertForbidden();
+});
+
+test('guests are redirected from a deal', function () {
+    $deal = Deal::factory()->create();
+
+    $this->get(route('deals.show', $deal))
+        ->assertRedirect(route('login'));
+});
+
+test('marking a deal sold closes the vehicle', function () {
+    $this->travelTo('2026-11-14 12:00:00');
+
+    $rep = User::factory()->rep()->create();
+    $contact = Contact::factory()->for($rep, 'owner')->create();
+    $vehicle = Vehicle::factory()->for($contact)->create([
+        'status' => VehicleStatus::Reserved,
+    ]);
+    $deal = Deal::factory()->for($rep, 'owner')->for($contact)->for($vehicle)->create([
+        'stage' => DealStage::Negotiation,
+    ]);
+
+    $this->actingAs($rep)
+        ->post(route('deals.sold', $deal))
+        ->assertRedirect(route('deals.show', $deal));
+
+    expect($deal->refresh()->stage)->toBe(DealStage::Sold)
+        ->and($deal->closed_at?->toDateTimeString())->toBe('2026-11-14 12:00:00')
+        ->and($vehicle->refresh()->status)->toBe(VehicleStatus::Sold);
+});
+
+test('a rep gets 403 marking another reps deal sold', function () {
+    $rep = User::factory()->rep()->create();
+    $other = User::factory()->rep()->create();
+    $deal = Deal::factory()->for($other, 'owner')->create([
+        'stage' => DealStage::Negotiation,
+    ]);
+
+    $this->actingAs($rep)
+        ->post(route('deals.sold', $deal))
+        ->assertForbidden();
+
+    expect($deal->refresh()->stage)->toBe(DealStage::Negotiation);
+});
+
+test('moving a deal to lost keeps it closed and an open stage clears that', function () {
+    $this->travelTo('2026-11-14 12:00:00');
+
+    $rep = User::factory()->rep()->create();
+    $deal = Deal::factory()->for($rep, 'owner')->create([
+        'stage' => DealStage::Enquiry,
+    ]);
+
+    $this->actingAs($rep)
+        ->from(route('deals.show', $deal))
+        ->patch(route('deals.update', $deal), [
+            'stage' => DealStage::Lost->value,
+        ])
+        ->assertRedirect(route('deals.show', $deal));
+
+    expect($deal->refresh()->closed_at?->toDateTimeString())->toBe('2026-11-14 12:00:00');
+
+    $this->from(route('deals.show', $deal))
+        ->patch(route('deals.update', $deal), [
+            'stage' => DealStage::Enquiry->value,
+        ])
+        ->assertRedirect(route('deals.show', $deal));
+
+    expect($deal->refresh()->closed_at)->toBeNull();
+});
+
+test('a rep can add a note to their own deal', function () {
+    $this->travelTo('2026-11-14 10:30:00');
+
+    $rep = User::factory()->rep()->create(['name' => 'Riley Rep']);
+    $contact = Contact::factory()->for($rep, 'owner')->create();
+    $deal = Deal::factory()->for($rep, 'owner')->for($contact)->create();
+
+    $this->actingAs($rep)
+        ->post(route('deals.notes.store', $deal), [
+            'body' => 'Test drive scheduled for tomorrow.',
+        ])
+        ->assertRedirect(route('deals.show', $deal));
+
+    $this->get(route('deals.show', $deal))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('deal.notes.0.body', 'Test drive scheduled for tomorrow.')
+            ->where('deal.notes.0.author', 'Riley Rep')
+            ->where('deal.notes.0.time', '10:30 AM')
+        );
+});
+
+test('a rep gets 403 adding a note to another reps deal', function () {
+    $rep = User::factory()->rep()->create();
+    $other = User::factory()->rep()->create();
+    $deal = Deal::factory()->for($other, 'owner')->create();
+
+    $this->actingAs($rep)
+        ->post(route('deals.notes.store', $deal), [
+            'body' => 'Stolen note',
+        ])
+        ->assertForbidden();
+});
+
+test('the pipeline metrics count open value, conversion, and days to close', function () {
+    $this->travelTo('2026-11-14 12:00:00');
+
+    $rep = User::factory()->rep()->create();
+    $other = User::factory()->rep()->create();
+    $contact = Contact::factory()->for($rep, 'owner')->create();
+    $otherContact = Contact::factory()->for($other, 'owner')->create();
+
+    Deal::factory()->for($rep, 'owner')->for($contact)->create([
+        'value' => '100.00',
+        'stage' => DealStage::Enquiry,
+    ]);
+    Deal::factory()->for($rep, 'owner')->for($contact)->create([
+        'value' => '40.00',
+        'stage' => DealStage::TestDrive,
+    ]);
+    Deal::factory()->for($rep, 'owner')->for($contact)->create([
+        'value' => '10.00',
+        'stage' => DealStage::Negotiation,
+    ]);
+    Deal::factory()->for($rep, 'owner')->for($contact)->create([
+        'value' => '80.00',
+        'stage' => DealStage::Sold,
+        'created_at' => now()->subDays(10),
+        'closed_at' => now(),
+    ]);
+    Deal::factory()->for($rep, 'owner')->for($contact)->create([
+        'value' => '20.00',
+        'stage' => DealStage::Lost,
+        'created_at' => now()->subDays(30),
+        'closed_at' => now()->subDays(20),
+    ]);
+    Deal::factory()->for($other, 'owner')->for($otherContact)->create([
+        'value' => '999.00',
+        'stage' => DealStage::Enquiry,
+    ]);
+
+    $this->actingAs($rep)
+        ->get(route('deals.index'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('metrics.pipelineValue', '150.00')
+            ->where('metrics.openDeals', 3)
+            ->where('metrics.conversion', 50)
+            ->where('metrics.averageDaysToClose', 10)
+            ->has('deals', 5)
+        );
+});
+
+test('a manager sees pipeline metrics for every rep', function () {
+    $this->travelTo('2026-11-14 12:00:00');
+
+    $manager = User::factory()->manager()->create();
+    $rep = User::factory()->rep()->create();
+    $other = User::factory()->rep()->create();
+    $contact = Contact::factory()->for($rep, 'owner')->create();
+    $otherContact = Contact::factory()->for($other, 'owner')->create();
+
+    Deal::factory()->for($rep, 'owner')->for($contact)->create([
+        'value' => '100.00',
+        'stage' => DealStage::Enquiry,
+    ]);
+    Deal::factory()->for($other, 'owner')->for($otherContact)->create([
+        'value' => '999.00',
+        'stage' => DealStage::Sold,
+        'created_at' => now()->subDays(4),
+        'closed_at' => now(),
+    ]);
+
+    $this->actingAs($manager)
+        ->get(route('deals.index'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('metrics.pipelineValue', '100.00')
+            ->where('metrics.openDeals', 1)
+            ->where('metrics.conversion', 100)
+            ->where('metrics.averageDaysToClose', 4)
+            ->has('deals', 2)
+        );
+});
+
+test('guests are redirected from adding a deal note', function () {
+    $deal = Deal::factory()->create();
+
+    $this->post(route('deals.notes.store', $deal), [
+        'body' => 'Hello',
+    ])->assertRedirect(route('login'));
 });

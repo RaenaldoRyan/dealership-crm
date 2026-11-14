@@ -26,6 +26,8 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property string $name
  * @property string $email
  * @property Role $role
+ * @property bool $is_active
+ * @property CarbonInterface|null $last_login_at
  * @property CarbonInterface|null $email_verified_at
  * @property string $password
  * @property string|null $two_factor_secret
@@ -43,6 +45,13 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable, PasskeyAuthenticatable, TwoFactorAuthenticatable;
+
+    /**
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'is_active' => true,
+    ];
 
     /**
      * Get the contacts owned by this user.
@@ -75,6 +84,8 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'role' => Role::class,
+            'is_active' => 'boolean',
+            'last_login_at' => 'datetime',
             'two_factor_confirmed_at' => 'datetime',
         ];
     }

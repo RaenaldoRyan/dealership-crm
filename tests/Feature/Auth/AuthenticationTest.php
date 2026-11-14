@@ -19,7 +19,7 @@ test('users can authenticate using the login screen', function () {
     ]);
 
     $this->assertAuthenticated();
-    $response->assertRedirect(route('dashboard', absolute: false));
+    $response->assertRedirect(route('overview', absolute: false));
 });
 
 test('users with two factor enabled are redirected to two factor challenge', function () {
@@ -39,6 +39,47 @@ test('users with two factor enabled are redirected to two factor challenge', fun
 
     $response->assertRedirect(route('two-factor.login'));
     $response->assertSessionHas('login.id', $user->id);
+    $this->assertGuest();
+});
+
+test('a successful login records when it happened', function () {
+    $this->travelTo('2026-11-14 12:00:00');
+
+    $user = User::factory()->create();
+
+    $this->post(route('login.store'), [
+        'email' => $user->email,
+        'password' => 'password',
+    ])->assertRedirect(route('overview', absolute: false));
+
+    expect($user->refresh()->last_login_at?->toDateTimeString())->toBe('2026-11-14 12:00:00');
+});
+
+test('an inactive account cannot sign in', function () {
+    $user = User::factory()->inactive()->create();
+
+    $this->post(route('login.store'), [
+        'email' => $user->email,
+        'password' => 'password',
+    ])->assertSessionHasErrors([
+        'email' => 'This account is inactive. Ask a manager if you need access.',
+    ]);
+
+    $this->assertGuest();
+
+    expect($user->refresh()->last_login_at)->toBeNull();
+});
+
+test('a wrong password on an inactive account stays the usual failure', function () {
+    $user = User::factory()->inactive()->create();
+
+    $this->post(route('login.store'), [
+        'email' => $user->email,
+        'password' => 'wrong-password',
+    ])->assertSessionHasErrors([
+        'email' => trans('auth.failed'),
+    ]);
+
     $this->assertGuest();
 });
 
